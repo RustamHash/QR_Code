@@ -9,10 +9,10 @@ $headers = @{
     "Content-Type" = "application/json"
 }
 
-Write-Host "🚀 Автоматическое развертывание через Timeweb Cloud API..." -ForegroundColor Green
+Write-Host "Avtomaticheskoe razvertyvanie cherez Timeweb Cloud API..." -ForegroundColor Green
 
 try {
-    Write-Host "📡 Получение информации о серверах..." -ForegroundColor Yellow
+    Write-Host "Poluchenie informacii o serverah..." -ForegroundColor Yellow
     $serversResponse = Invoke-RestMethod -Uri "$baseUrl/servers" -Method Get -Headers $headers
     
     $server = $null
@@ -23,35 +23,58 @@ try {
     }
     
     if (-not $server) {
-        Write-Host "❌ Сервер не найден. Доступные серверы:" -ForegroundColor Red
+        Write-Host "Server ne naiden. Dostupnye servery:" -ForegroundColor Red
         if ($serversResponse.servers) {
             $serversResponse.servers | ForEach-Object {
-                Write-Host "  - ID: $($_.id), Имя: $($_.name)" -ForegroundColor Yellow
+                Write-Host "  - ID: $($_.id), Name: $($_.name)" -ForegroundColor Yellow
             }
         }
     } else {
-        Write-Host "✅ Сервер найден:" -ForegroundColor Green
+        Write-Host "Server naiden:" -ForegroundColor Green
         Write-Host "   ID: $($server.id)" -ForegroundColor White
-        Write-Host "   Имя: $($server.name)" -ForegroundColor White
+        Write-Host "   Name: $($server.name)" -ForegroundColor White
         Write-Host "   IP: $($server.ip)" -ForegroundColor White
-        Write-Host "   Статус: $($server.status)" -ForegroundColor White
+        Write-Host "   Status: $($server.status)" -ForegroundColor White
+        
+        # Получение детальной информации
+        try {
+            Write-Host ""
+            Write-Host "Poluchenie detalnoj informacii..." -ForegroundColor Yellow
+            $serverDetails = Invoke-RestMethod -Uri "$baseUrl/servers/$($server.id)" -Method Get -Headers $headers
+            
+            if ($serverDetails.server) {
+                $details = $serverDetails.server
+                Write-Host "   IPv6: 2a03:6f00:a::1:897d" -ForegroundColor White
+                if ($details.ipv4) {
+                    Write-Host "   IPv4: $($details.ipv4)" -ForegroundColor White
+                }
+                if ($details.networks) {
+                    $ipv4Network = $details.networks | Where-Object { $_.type -eq "ipv4" } | Select-Object -First 1
+                    if ($ipv4Network) {
+                        Write-Host "   IPv4 Network: $($ipv4Network.ip)" -ForegroundColor White
+                    }
+                }
+            }
+        } catch {
+            Write-Host "   Ne udalos poluchit detali (eto normalno)" -ForegroundColor Yellow
+        }
     }
     
 } catch {
-    Write-Host "❌ Ошибка при обращении к API: $_" -ForegroundColor Red
-    Write-Host "   Это нормально, если API не поддерживает эту операцию" -ForegroundColor Yellow
+    Write-Host "Oshibka pri obrashchenii k API: $_" -ForegroundColor Red
+    Write-Host "   Eto normalno, esli API ne podderzhivaet etu operaciyu" -ForegroundColor Yellow
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Инструкции для развертывания:" -ForegroundColor Cyan
+Write-Host "Instrukcii dlya razvertyvaniya:" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Используйте веб-консоль Timeweb Cloud:" -ForegroundColor Yellow
-Write-Host "1. Войдите в панель: https://timeweb.cloud/" -ForegroundColor White
-Write-Host "2. Откройте веб-консоль для сервера ns552001" -ForegroundColor White
-Write-Host "3. Выполните команду ниже" -ForegroundColor White
+Write-Host "Ispolzujte web-konsol Timeweb Cloud:" -ForegroundColor Yellow
+Write-Host "1. Vojdite v panel: https://timeweb.cloud/" -ForegroundColor White
+Write-Host "2. Otkrojte web-konsol dlya servera ns552001" -ForegroundColor White
+Write-Host "3. Vypolnite komandu nizhe" -ForegroundColor White
 Write-Host ""
-Write-Host "Команда для выполнения на сервере:" -ForegroundColor Yellow
+Write-Host "Komanda dlya vypolneniya na servere:" -ForegroundColor Yellow
 Write-Host "curl -fsSL https://raw.githubusercontent.com/RustamHash/QR_Code/main/deploy-timeweb.sh | bash" -ForegroundColor Green
 Write-Host ""
