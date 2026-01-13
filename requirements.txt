@@ -1,0 +1,35 @@
+# Core dependencies
+python-telegram-bot>=20.7
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Database
+sqlalchemy>=2.0.23
+alembic>=1.13.0
+
+# Excel processing
+pandas>=2.1.4
+openpyxl>=3.1.2
+xlrd>=2.0.1
+
+# QR Code generation
+qrcode[pil]>=7.4.2
+Pillow>=10.1.0
+
+# PDF generation
+fpdf2>=2.7.6
+
+# Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
+
+# Code quality
+black>=23.12.1
+flake8>=6.1.0
+mypy>=1.7.1
+
+# Utilities
+python-multipart>=0.0.6
+

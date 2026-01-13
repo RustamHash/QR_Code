@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qr-code-bot"
+version = "2.0.0"
+description = "Telegram bot for generating QR codes from Excel files and text messages"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "QR Code Bot Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "python-telegram-bot>=20.7",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.23",
+    "alembic>=1.13.0",
+    "pandas>=2.1.4",
+    "openpyxl>=3.1.2",
+    "xlrd>=2.0.1",
+    "qrcode[pil]>=7.4.2",
+    "Pillow>=10.1.0",
+    "fpdf2>=2.7.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.1",
+    "flake8>=6.1.0",
+    "mypy>=1.7.1",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+
