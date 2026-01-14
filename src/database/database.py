@@ -1,6 +1,8 @@
 """
 Инициализация и настройка базы данных.
 """
+import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
@@ -30,6 +32,29 @@ def get_engine():
         
         # Для SQLite используем StaticPool для лучшей работы с потоками
         if database_url.startswith("sqlite"):
+            # Обрабатываем относительные пути для SQLite
+            if database_url.startswith("sqlite:///"):
+                db_path = database_url.replace("sqlite:///", "")
+                # Преобразуем в абсолютный путь
+                if not os.path.isabs(db_path):
+                    db_path = os.path.abspath(db_path)
+                
+                # Проверяем, не является ли путь директорией (ошибка конфигурации)
+                if os.path.exists(db_path) and os.path.isdir(db_path):
+                    logger.error(f"Путь к базе данных является директорией: {db_path}")
+                    raise ValueError(f"Путь к базе данных является директорией: {db_path}. Удалите директорию и попробуйте снова.")
+                
+                # Создаем директорию для БД, если нужно
+                db_dir = os.path.dirname(db_path)
+                if db_dir and not os.path.exists(db_dir):
+                    try:
+                        os.makedirs(db_dir, exist_ok=True)
+                    except Exception as e:
+                        logger.warning(f"Не удалось создать директорию для БД: {e}")
+                
+                # Используем абсолютный путь
+                database_url = f"sqlite:///{db_path}"
+            
             _engine = create_engine(
                 database_url,
                 poolclass=StaticPool,

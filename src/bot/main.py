@@ -7,7 +7,8 @@ from pathlib import Path
 
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 
-from ..core.config import get_settings, ConfigurationError
+from ..core.config import get_settings
+from ..core.exceptions import ConfigurationError
 from ..core.logging_config import setup_logging, get_logger
 from ..database.database import init_database
 from .handlers import (
@@ -119,6 +120,12 @@ async def post_shutdown(application: Application) -> None:
 def main() -> None:
     """Главная функция запуска бота."""
     try:
+        # Настраиваем кодировку UTF-8 для вывода в консоль (Windows)
+        if sys.platform == "win32":
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        
         # Настраиваем логирование
         setup_logging()
         logger.info("=" * 50)
@@ -146,12 +153,12 @@ def main() -> None:
         logger.info("Получен сигнал остановки (KeyboardInterrupt)")
     except ConfigurationError as e:
         logger.error(f"Ошибка конфигурации: {e}")
-        print(f"\n❌ Ошибка конфигурации: {e}")
+        print(f"\n[ОШИБКА] Ошибка конфигурации: {e}")
         print("Проверьте файл .env или переменные окружения.")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Критическая ошибка при работе бота: {e}", exc_info=True)
-        print(f"\n❌ Критическая ошибка: {e}")
+        print(f"\n[ОШИБКА] Критическая ошибка: {e}")
         sys.exit(1)
 
 

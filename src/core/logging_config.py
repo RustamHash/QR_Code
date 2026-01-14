@@ -54,14 +54,19 @@ def setup_logging(
     
     # Файловый обработчик
     if log_file_path:
-        file_handler = logging.FileHandler(
-            log_file_path,
-            encoding='utf-8',
-            mode='a'
-        )
-        file_handler.setLevel(level)
-        file_handler.setFormatter(logging.Formatter(log_format))
-        handlers.append(file_handler)
+        try:
+            file_handler = logging.FileHandler(
+                log_file_path,
+                encoding='utf-8',
+                mode='a'
+            )
+            file_handler.setLevel(level)
+            file_handler.setFormatter(logging.Formatter(log_format))
+            handlers.append(file_handler)
+        except (PermissionError, OSError) as e:
+            # Пропускаем файловый обработчик, используем только консольный
+            import warnings
+            warnings.warn(f"Не удалось создать файл лога {log_file_path}: {e}. Используется только консольное логирование.")
     
     # Настраиваем корневой логгер
     logging.basicConfig(

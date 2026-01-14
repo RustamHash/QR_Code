@@ -51,41 +51,86 @@ def create_qr_pdf(
         
         # Отступы от краев страницы
         margin_x = 5
-        margin_y = 5
-        spacing = 5
+        top_margin = 10  # Отступ сверху
+        bottom_margin = 5
         
         # Рассчитываем доступное пространство
-        available_width = width - (2 * margin_x) - (spacing * (columns_per_page - 1))
-        available_height = height - (2 * margin_y) - (spacing * (rows_per_page - 1))
+        available_width = width - (2 * margin_x)
+        available_height = height - top_margin - bottom_margin
         
         # Рассчитываем размер QR-кода (квадратный)
-        qr_size_by_width = available_width / columns_per_page
-        qr_size_by_height = available_height / rows_per_page
+        # Для равномерного распределения используем весь доступный размер
+        qr_size_by_width = available_width / columns_per_page if columns_per_page > 0 else available_width
+        qr_size_by_height = available_height / rows_per_page if rows_per_page > 0 else available_height
         qr_size = min(qr_size_by_width, qr_size_by_height)
         
-        # Рассчитываем начальные позиции для центрирования сетки
-        total_grid_width = (qr_size * columns_per_page) + (spacing * (columns_per_page - 1))
-        total_grid_height = (qr_size * rows_per_page) + (spacing * (rows_per_page - 1))
-        start_x = margin_x + (available_width - total_grid_width) / 2
-        start_y = margin_y + (available_height - total_grid_height) / 2
+        # Равномерное распределение строк по вертикали
+        # Используем весь доступный промежуток между top_margin и bottom_margin
+        if rows_per_page > 1:
+            # Равномерно распределяем строки с одинаковыми промежутками
+            total_rows_height = qr_size * rows_per_page
+            total_spacing_height = available_height - total_rows_height
+            vertical_spacing = total_spacing_height / (rows_per_page - 1) if rows_per_page > 1 else 0
+        else:
+            vertical_spacing = 0
+        
+        # Распределение колонок по горизонтали
+        column_positions = []
+        if columns_per_page == 1:
+            # 1 колонка - по центру
+            column_positions = [margin_x + (available_width - qr_size) / 2]
+        elif columns_per_page == 2:
+            # 2 колонки - первая у левого края, вторая у правого края
+            column_positions = [margin_x, width - margin_x - qr_size]
+        else:
+            # 3+ колонки - крайние у краев, остальные равномерно между ними
+            total_columns_width = qr_size * columns_per_page
+            total_horizontal_spacing = available_width - total_columns_width
+            horizontal_spacing = total_horizontal_spacing / (columns_per_page - 1) if columns_per_page > 1 else 0
+            
+            # Первая колонка у левого края
+            column_positions.append(margin_x)
+            
+            # Промежуточные колонки равномерно распределены
+            for col in range(1, columns_per_page - 1):
+                x_pos = margin_x + col * (qr_size + horizontal_spacing)
+                column_positions.append(x_pos)
+            
+            # Последняя колонка у правого края
+            column_positions.append(width - margin_x - qr_size)
+        
+        # Начальная позиция Y для первой строки
+        start_y = top_margin
         
         # Счетчики для позиционирования
         current_row = 0
         current_col = 0
         page_count = 0
         
+        # Создаем первую страницу
+        pdf.add_page()
+        page_count = 1
+        logger.debug("Создана первая страница")
+        
         for i, qr_image in enumerate(qr_images, 1):
-            # Если страница заполнена, создаем новую
+            # Если текущая строка заполнена, создаем новую страницу
             if current_row >= rows_per_page:
                 pdf.add_page()
                 current_row = 0
                 current_col = 0
                 page_count += 1
-                logger.debug(f"Создана страница {page_count + 1}")
+                logger.debug(f"Создана страница {page_count}")
             
             # Рассчитываем позицию QR-кода
-            x_pos = start_x + (current_col * (qr_size + spacing))
-            y_pos = start_y + (current_row * (qr_size + spacing))
+            # X позиция из предварительно рассчитанных позиций колонок
+            x_pos = column_positions[current_col]
+            
+            # Y позиция - равномерное распределение строк
+            if rows_per_page > 1:
+                y_pos = start_y + current_row * (qr_size + vertical_spacing)
+            else:
+                # Если одна строка, центрируем по вертикали
+                y_pos = top_margin + (available_height - qr_size) / 2
             
             # Конвертируем QR-код в байты
             img_bytes = qr_image_to_bytes(qr_image)
@@ -110,7 +155,7 @@ def create_qr_pdf(
         pdf.output(output_file)
         output_file.seek(0)
         
-        total_pages = page_count + 1
+        total_pages = page_count
         logger.info(f"PDF файл создан: {len(data_items)} QR-кодов на {total_pages} страницах (сетка {rows_per_page}x{columns_per_page})")
         return output_file
         

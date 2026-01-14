@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Устанавливаем зависимости Python
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Финальный образ
 FROM python:3.11-slim
@@ -19,16 +19,15 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем установленные пакеты из builder
-COPY --from=builder /root/.local /root/.local
-
 # Устанавливаем переменные окружения
-ENV PATH=/root/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Создаем рабочую директорию
 WORKDIR /app
+
+# Копируем установленные пакеты из builder (system-wide)
+COPY --from=builder /usr/local /usr/local
 
 # Копируем код приложения
 COPY . .

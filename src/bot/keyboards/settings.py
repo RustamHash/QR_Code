@@ -63,11 +63,11 @@ def create_param_keyboard(
         label = "Высота"
         unit = "мм"
     elif param_type == "rows":
-        values = [1, 2, 3, 4, 5, 6, 7, 8]
+        values = [5, 10, 15, 20]
         label = "Строк"
         unit = "шт"
     elif param_type == "columns":
-        values = [1, 2, 3, 4]
+        values = [1, 2, 3, 4, 5]
         label = "Колонок"
         unit = "шт"
     else:
