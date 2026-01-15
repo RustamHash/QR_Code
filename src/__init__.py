@@ -1,2 +1,1 @@
 """QR Code Generator Bot."""
-

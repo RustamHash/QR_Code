@@ -1,6 +1,7 @@
 """
 Главный модуль Telegram бота.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -11,9 +12,7 @@ from ..core.config import get_settings
 from ..core.exceptions import ConfigurationError
 from ..core.logging_config import setup_logging, get_logger
 from ..database.database import init_database
-from .handlers import (
-    commands, callbacks, messages
-)
+from .handlers import commands, callbacks, messages
 
 logger = get_logger(__name__)
 
@@ -21,23 +20,23 @@ logger = get_logger(__name__)
 def create_application() -> Application:
     """
     Создает и настраивает приложение Telegram бота.
-    
+
     Returns:
         Application: Настроенное приложение
-    
+
     Raises:
         ConfigurationError: если конфигурация невалидна
     """
     try:
         settings = get_settings()
         token = settings.telegram_bot_token
-        
+
         if not token:
             raise ConfigurationError("Токен бота не указан в конфигурации")
-        
+
         # Создаем приложение
         application = Application.builder().token(token).build()
-        
+
         # Регистрируем обработчики команд
         application.add_handler(CommandHandler("start", commands.start_command))
         application.add_handler(CommandHandler("help", commands.help_command))
@@ -49,22 +48,24 @@ def create_application() -> Application:
         application.add_handler(CommandHandler("height", commands.set_height_command))
         application.add_handler(CommandHandler("rows", commands.set_rows_command))
         application.add_handler(CommandHandler("columns", commands.set_columns_command))
-        
+
         # Регистрируем обработчики callback
         application.add_handler(CallbackQueryHandler(callbacks.handle_settings_callback))
-        
+
         # Регистрируем обработчики сообщений
         application.add_handler(MessageHandler(filters.CONTACT, messages.handle_contact))
         application.add_handler(MessageHandler(filters.Document.ALL, messages.handle_document))
         application.add_handler(MessageHandler(filters.PHOTO, messages.handle_photo))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages.handle_text_message))
-        
+        application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, messages.handle_text_message)
+        )
+
         # Настраиваем команды бота
         commands.setup_commands(application)
-        
+
         logger.info("Приложение бота создано и настроено")
         return application
-        
+
     except ConfigurationError:
         raise
     except Exception as e:
@@ -75,46 +76,42 @@ def create_application() -> Application:
 async def post_init(application: Application) -> None:
     """
     Функция инициализации после запуска бота.
-    
+
     Args:
         application: Приложение бота
     """
     settings = get_settings()
-    
+
     # Отправляем уведомление администратору
     if settings.admin_id:
         try:
             await application.bot.send_message(
-                chat_id=settings.admin_id,
-                text="✅ Бот запущен и готов к работе!"
+                chat_id=settings.admin_id, text="✅ Бот запущен и готов к работе!"
             )
             logger.info(f"Уведомление отправлено администратору {settings.admin_id}")
         except Exception as e:
             logger.warning(f"Не удалось отправить уведомление администратору: {e}")
-    
+
     logger.info("Бот запущен и готов к работе")
 
 
 async def post_shutdown(application: Application) -> None:
     """
     Функция завершения работы бота.
-    
+
     Args:
         application: Приложение бота
     """
     settings = get_settings()
-    
+
     # Отправляем уведомление администратору
     if settings.admin_id:
         try:
-            await application.bot.send_message(
-                chat_id=settings.admin_id,
-                text="❌ Бот остановлен."
-            )
+            await application.bot.send_message(chat_id=settings.admin_id, text="❌ Бот остановлен.")
             logger.info(f"Уведомление об остановке отправлено администратору {settings.admin_id}")
         except Exception as e:
             logger.warning(f"Не удалось отправить уведомление администратору: {e}")
-    
+
     logger.info("Бот остановлен")
 
 
@@ -124,32 +121,32 @@ def main() -> None:
         # Настраиваем кодировку UTF-8 для вывода в консоль (Windows)
         if sys.platform == "win32":
             import io
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-        
+
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
         # Настраиваем логирование
         setup_logging()
         logger.info("=" * 50)
         logger.info("Запуск QR Code Generator Bot")
         logger.info("=" * 50)
-        
+
         # Инициализируем базу данных
         init_database()
-        
+
         # Создаем приложение
         application = create_application()
-        
+
         # Устанавливаем обработчики событий
         application.post_init = post_init
         application.post_shutdown = post_shutdown
-        
+
         # Запускаем бота
         logger.info("Бот запускается...")
         application.run_polling(
-            allowed_updates=["message", "callback_query"],
-            drop_pending_updates=True
+            allowed_updates=["message", "callback_query"], drop_pending_updates=True
         )
-        
+
     except KeyboardInterrupt:
         logger.info("Получен сигнал остановки (KeyboardInterrupt)")
     except ConfigurationError as e:
@@ -165,4 +162,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

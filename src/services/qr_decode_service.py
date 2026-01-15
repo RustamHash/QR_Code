@@ -1,6 +1,7 @@
 """
 Сервис для декодирования QR-кодов из изображений.
 """
+
 import io
 from typing import List, Optional
 from PIL import Image, ImageEnhance, ImageFilter
@@ -10,6 +11,7 @@ from pyzbar.pyzbar import ZBarSymbol
 # Пробуем импортировать qreader как альтернативу
 try:
     from qreader import QReader
+
     QRREADER_AVAILABLE = True
 except ImportError:
     QRREADER_AVAILABLE = False
@@ -21,96 +23,136 @@ from ..core.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+# Проверяем доступность библиотек при импорте
+def _check_dependencies():
+    """Проверяет доступность библиотек для декодирования QR-кодов."""
+    issues = []
+
+    # Проверка pyzbar
+    try:
+        import pyzbar
+
+        logger.debug("pyzbar доступен")
+    except ImportError as e:
+        issues.append(f"pyzbar не установлен: {e}")
+        logger.warning("pyzbar не доступен")
+
+    # Проверка qreader
+    if QRREADER_AVAILABLE:
+        logger.debug("qreader доступен")
+    else:
+        logger.warning("qreader не доступен (опциональная библиотека)")
+
+    if issues:
+        logger.warning(f"Проблемы с зависимостями для декодирования QR-кодов: {', '.join(issues)}")
+
+    return len(issues) == 0
+
+
+# Выполняем проверку при импорте модуля
+_dependencies_ok = _check_dependencies()
+
+
 def decode_qr_from_image(image_bytes: bytes) -> List[str]:
     """
     Декодирует QR-коды из изображения.
-    
+
     Args:
         image_bytes: Изображение в виде байтов
-    
+
     Returns:
         List[str]: Список данных, извлеченных из QR-кодов
-    
+
     Raises:
         QRCodeDecodeError: если не удалось декодировать QR-коды
     """
     try:
+        # Проверяем доступность зависимостей
+        if not _dependencies_ok:
+            logger.error("Библиотеки для декодирования QR-кодов не установлены")
+            raise QRCodeDecodeError(
+                "Библиотеки для декодирования QR-кодов не установлены. Установите pyzbar."
+            )
+
         # Открываем изображение
         image = Image.open(io.BytesIO(image_bytes))
-        logger.info(f"Открыто изображение: размер={image.size}, режим={image.mode}, формат={image.format}")
-        
+        logger.info(
+            f"Открыто изображение: размер={image.size}, режим={image.mode}, формат={image.format}"
+        )
+
         # Пробуем разные варианты обработки
         decode_attempts = []
-        
+
         # Конвертируем в grayscale для всех вариантов
-        gray_image = image.convert('L')
-        
+        gray_image = image.convert("L")
+
         # Вариант 1: Простое grayscale
         decode_attempts.append(("grayscale", gray_image))
-        
+
         # Вариант 2: Увеличенный контраст в grayscale
         enhancer = ImageEnhance.Contrast(gray_image)
         high_contrast = enhancer.enhance(2.0)
         decode_attempts.append(("high_contrast_grayscale", high_contrast))
-        
+
         # Вариант 3: Максимальный контраст
         max_contrast = enhancer.enhance(3.0)
         decode_attempts.append(("max_contrast_grayscale", max_contrast))
-        
+
         # Вариант 4: Увеличенная резкость в grayscale
         sharpness_enhancer = ImageEnhance.Sharpness(gray_image)
         sharp_image = sharpness_enhancer.enhance(2.0)
         decode_attempts.append(("sharp_grayscale", sharp_image))
-        
+
         # Вариант 5: Бинаризация (черно-белое с порогом)
         try:
             # Пробуем разные пороги для бинаризации
             for threshold in [128, 100, 150]:
-                binary = gray_image.point(lambda x: 255 if x > threshold else 0, mode='1')
+                binary = gray_image.point(lambda x: 255 if x > threshold else 0, mode="1")
                 # Конвертируем обратно в L для pyzbar
-                binary_l = binary.convert('L')
+                binary_l = binary.convert("L")
                 decode_attempts.append((f"binary_threshold_{threshold}", binary_l))
         except Exception as e:
             logger.debug(f"Ошибка при бинаризации: {e}")
-        
+
         # Вариант 6: Инверсия цветов (на случай белого QR на черном фоне)
         inverted = Image.eval(gray_image, lambda x: 255 - x)
         decode_attempts.append(("inverted_grayscale", inverted))
-        
+
         # Вариант 7: Инверсия с высоким контрастом
         inverted_contrast = ImageEnhance.Contrast(inverted).enhance(2.0)
         decode_attempts.append(("inverted_high_contrast", inverted_contrast))
-        
+
         # Вариант 8: RGB (если grayscale не сработал)
-        if image.mode != 'RGB':
-            rgb_image = image.convert('RGB')
+        if image.mode != "RGB":
+            rgb_image = image.convert("RGB")
             decode_attempts.append(("RGB", rgb_image))
         else:
             decode_attempts.append(("RGB", image))
-        
+
         # Вариант 9: Применение фильтра резкости
         sharpened = gray_image.filter(ImageFilter.SHARPEN)
         decode_attempts.append(("sharpened_filter", sharpened))
-        
+
         # Вариант 10: Увеличенное изображение с улучшенной обработкой
         if image.size[0] < 500 or image.size[1] < 500:
             large_gray = gray_image.resize(
-                (image.size[0] * 2, image.size[1] * 2),
-                Image.Resampling.LANCZOS
+                (image.size[0] * 2, image.size[1] * 2), Image.Resampling.LANCZOS
             )
             decode_attempts.append(("resized_2x_grayscale", large_gray))
-            
+
             # С увеличенным контрастом
             large_contrast = ImageEnhance.Contrast(large_gray).enhance(2.0)
             decode_attempts.append(("resized_2x_high_contrast", large_contrast))
-        
+
         # Пробуем декодировать с каждым вариантом
         decoded_objects = None
         successful_method = None
-        
+
         for method_name, processed_image in decode_attempts:
             try:
-                logger.debug(f"Пробуем метод: {method_name}, размер={processed_image.size}, режим={processed_image.mode}")
+                logger.debug(
+                    f"Пробуем метод: {method_name}, размер={processed_image.size}, режим={processed_image.mode}"
+                )
                 decoded_objects = pyzbar.decode(processed_image, symbols=[ZBarSymbol.QRCODE])
                 if decoded_objects:
                     successful_method = method_name
@@ -121,18 +163,17 @@ def decode_qr_from_image(image_bytes: bytes) -> List[str]:
             except Exception as e:
                 logger.debug(f"Метод {method_name} не сработал: {e}")
                 continue
-        
+
         # Если ничего не сработало, пробуем еще более агрессивные методы
         if not decoded_objects:
             logger.debug("Пробуем дополнительные методы обработки")
-            
+
             # Очень большое увеличение для маленьких изображений
             if image.size[0] < 500 or image.size[1] < 500:
                 logger.debug("Попытка большого увеличения изображения")
                 for scale in [3, 4, 5]:
                     large_gray = gray_image.resize(
-                        (image.size[0] * scale, image.size[1] * scale),
-                        Image.Resampling.LANCZOS
+                        (image.size[0] * scale, image.size[1] * scale), Image.Resampling.LANCZOS
                     )
                     # С разными уровнями контраста
                     for contrast_level in [1.5, 2.0, 3.0]:
@@ -147,7 +188,7 @@ def decode_qr_from_image(image_bytes: bytes) -> List[str]:
                             continue
                     if decoded_objects:
                         break
-        
+
         # Если pyzbar не сработал, пробуем qreader (если доступен)
         if not decoded_objects and QRREADER_AVAILABLE:
             logger.info("pyzbar не распознал QR-код, пробуем qreader...")
@@ -162,34 +203,36 @@ def decode_qr_from_image(image_bytes: bytes) -> List[str]:
                     # Пропускаем извлечение данных, так как qreader уже вернул текст
                     return data_list
             except Exception as e:
-                logger.debug(f"qreader не сработал: {e}")
-        
+                logger.warning(f"qreader не сработал: {e}", exc_info=True)
+
         if not decoded_objects:
             raise QRCodeDecodeError("QR-код не найден на изображении")
-        
+
         # Извлекаем данные
         data_list = []
         for obj in decoded_objects:
             try:
-                data = obj.data.decode('utf-8')
+                data = obj.data.decode("utf-8")
                 data_list.append(data)
                 logger.debug(f"Декодирован QR-код: {data[:50]}...")
             except UnicodeDecodeError:
                 # Пробуем другие кодировки
                 try:
-                    data = obj.data.decode('latin-1')
+                    data = obj.data.decode("latin-1")
                     data_list.append(data)
                     logger.debug(f"Декодирован QR-код (latin-1): {data[:50]}...")
                 except Exception as e:
                     logger.warning(f"Не удалось декодировать данные QR-кода: {e}")
                     continue
-        
+
         if not data_list:
             raise QRCodeDecodeError("Не удалось извлечь данные из QR-кодов")
-        
-        logger.info(f"Успешно декодировано {len(data_list)} QR-код(ов) методом: {successful_method}")
+
+        logger.info(
+            f"Успешно декодировано {len(data_list)} QR-код(ов) методом: {successful_method}"
+        )
         return data_list
-        
+
     except QRCodeDecodeError:
         raise
     except Exception as e:
@@ -200,18 +243,18 @@ def decode_qr_from_image(image_bytes: bytes) -> List[str]:
 def decode_qr_from_image_file(image_path: str) -> List[str]:
     """
     Декодирует QR-коды из файла изображения.
-    
+
     Args:
         image_path: Путь к файлу изображения
-    
+
     Returns:
         List[str]: Список данных, извлеченных из QR-кодов
-    
+
     Raises:
         QRCodeDecodeError: если не удалось декодировать QR-коды
     """
     try:
-        with open(image_path, 'rb') as f:
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
         return decode_qr_from_image(image_bytes)
     except FileNotFoundError:
@@ -219,4 +262,3 @@ def decode_qr_from_image_file(image_path: str) -> List[str]:
     except Exception as e:
         logger.error(f"Ошибка при чтении файла изображения: {e}", exc_info=True)
         raise QRCodeDecodeError(f"Не удалось прочитать файл изображения: {e}") from e
-
