@@ -86,22 +86,35 @@ python main.py
 
 ### Запуск в Docker
 
+#### Локальная разработка
+
 1. Создайте файл `.env` (см. выше)
 
 2. Соберите образ:
 ```bash
-docker-compose build
+docker-compose -f docker-compose_local.yml build
 ```
 
 3. Запустите контейнер:
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose_local.yml up -d
 ```
 
 4. Просмотр логов:
 ```bash
-docker-compose logs -f
+docker-compose -f docker-compose_local.yml logs -f
 ```
+
+#### Развертывание на Timeweb Cloud
+
+Файл `docker-compose.yml` настроен для Timeweb Cloud (без volumes).
+
+**Важно:** После создания приложения через MCP сервер или вручную, настройте переменные окружения в панели Timeweb Cloud:
+- `TELEGRAM_BOT_TOKEN` - токен вашего бота
+- `ADMIN_ID` - ваш Telegram ID (опционально)
+- `DATABASE_URL=sqlite:///app/bot_database.db`
+- `LOG_LEVEL=INFO`
+- `LOG_FILE=bot.log`
 
 ## Использование
 

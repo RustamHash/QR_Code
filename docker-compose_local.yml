@@ -1,4 +1,6 @@
-# Docker Compose для Timeweb Cloud (без volumes)
+# Docker Compose для локальной разработки (с volumes)
+version: '3.8'
+
 services:
   bot:
     build:
@@ -6,13 +8,15 @@ services:
       dockerfile: Dockerfile
     container_name: qr_code_bot
     restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./bot_database.db:/app/bot_database.db:rw
+      - ./bot.log:/app/bot.log:rw
+      - ./backups:/app/backups:rw
     environment:
-      - DATABASE_URL=sqlite:///app/bot_database.db
+      - DATABASE_URL=sqlite:///bot_database.db
       - PYTHONUNBUFFERED=1
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - ADMIN_ID=${ADMIN_ID}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FILE=${LOG_FILE:-bot.log}
     networks:
       - bot_network
     logging:

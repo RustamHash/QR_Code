@@ -78,3 +78,6 @@ user_settings.json.backup
 token.txt
 admin_id.txt
 
+# Cursor MCP config (contains API tokens)
+.cursor/mcp.json
+
