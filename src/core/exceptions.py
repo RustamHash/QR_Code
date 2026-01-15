@@ -43,6 +43,11 @@ class QRCodeGenerationError(QRCodeBotException):
     pass
 
 
+class QRCodeDecodeError(QRCodeBotException):
+    """Ошибка декодирования QR-кода."""
+    pass
+
+
 class PDFGenerationError(QRCodeBotException):
     """Ошибка генерации PDF."""
     pass

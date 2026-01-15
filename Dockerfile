@@ -5,6 +5,7 @@ FROM python:3.11-slim as builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    libzbar0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем зависимости Python
@@ -15,8 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Финальный образ
 FROM python:3.11-slim
 
-# Устанавливаем системные зависимости
+# Устанавливаем системные зависимости (включая libzbar0 для pyzbar)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    libzbar0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем переменные окружения

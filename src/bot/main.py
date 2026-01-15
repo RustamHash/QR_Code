@@ -56,6 +56,7 @@ def create_application() -> Application:
         # Регистрируем обработчики сообщений
         application.add_handler(MessageHandler(filters.CONTACT, messages.handle_contact))
         application.add_handler(MessageHandler(filters.Document.ALL, messages.handle_document))
+        application.add_handler(MessageHandler(filters.PHOTO, messages.handle_photo))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages.handle_text_message))
         
         # Настраиваем команды бота

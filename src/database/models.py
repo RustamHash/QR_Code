@@ -19,6 +19,7 @@ class ProcessingType(str, enum.Enum):
     """Тип обработки данных."""
     FILE = "file"
     TEXT = "text"
+    QR_DECODE = "qr_decode"
 
 
 class ProcessingStatus(str, enum.Enum):
